@@ -29,6 +29,14 @@ def test_serving_contract_is_complete() -> None:
         assert value in launcher
 
 
+def test_unified_memory_profile_uses_direct_aio_and_ten_gib_kv() -> None:
+    launcher = (ROOT / "scripts" / "launch-rank.sh").read_text()
+    service = (ROOT / "config" / "service.env.example").read_text()
+    assert "INSTANTTENSOR_BACKEND=AIO" in launcher
+    assert "AIO_BUFFERED" not in launcher
+    assert "KV_CACHE_MEMORY_BYTES=10737418240" in service
+
+
 def test_site_specific_values_are_placeholders() -> None:
     examples = "\n".join(
         (ROOT / "config" / name).read_text()

@@ -24,8 +24,9 @@ vLLM recipe for arbitrary hosts or network topologies.
 - Four hosts tensor parallel size 4
 - 524,288 maximum context (supports 1M)
 - 8,192 batched tokens and 32 sequences
-- FP8 KV cache with an explicit 8 GiB slab per rank (maybe some room to tweak here)
+- FP8 KV cache with an explicit 10 GiB slab per rank
 - InstantTensor rank-local loading
+- Direct InstantTensor AIO to avoid unified-memory page-cache pollution
 - FlashKDA prefill
 - FlashInfer CUTLASS NVFP4 target experts
 - Marlin MXFP8 MTP experts
@@ -126,7 +127,8 @@ ssh RANK0_SSH_TARGET \
 
 First startup reads the checkpoint twice: once for the target and once for the
 MTP runner. Graph capture follows. Do not treat the second 184 GiB progress bar
-as a reload loop.
+as a reload loop. On the qualified local NVMe layout, direct AIO completed the
+two reads in 21.2 and 19.9 seconds while keeping file cache below 4 GiB.
 
 ## Verify
 
@@ -149,9 +151,9 @@ Then send a real request and rerun the verifier.
 
 - MTP4 has passed API and counter validation, but its throughput has not yet
   been compared against MTP3 under a matched matrix.
-- Eight GiB of hybrid KV does not admit 32 independent 8K requests; C16 is the
-  currently demonstrated high-concurrency region.
+- Ten GiB of hybrid KV admitted 32 independent 8K requests at 97.93% peak KV
+  utilization, zero preemptions, and 328.1 aggregate decode tok/s. C32 at
+  longer contexts is not yet qualified.
 - This profile uses patched NCCL on a four-node cycle. Switch fabrics and
   two-node direct pairs require different transport settings
 - this setup has only been run and validated (lightly) on *switchless* 4x spark clusters.
-

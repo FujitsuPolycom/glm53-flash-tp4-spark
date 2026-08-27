@@ -118,7 +118,7 @@ docker run -d \
   -e TORCH_EXTENSIONS_DIR=/cache/jit/torch_extensions \
   -e VLLM_CACHE_ROOT=/cache/jit/vllm \
   -e FLASHINFER_WORKSPACE_BASE=/cache/jit/flashinfer \
-  -e INSTANTTENSOR_BACKEND=AIO_BUFFERED \
+  -e INSTANTTENSOR_BACKEND=AIO \
   -e INSTANTTENSOR_BUFFER_SIZE=1268776960 \
   -e INSTANTTENSOR_CONCURRENCY=1 \
   -e INSTANTTENSOR_IO_DEPTH=3 \
@@ -159,4 +159,3 @@ docker run -d \
   --enable-prefix-caching \
   --cudagraph-metrics \
   "${headless[@]}"
-
