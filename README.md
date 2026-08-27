@@ -21,10 +21,14 @@ vLLM recipe for arbitrary hosts or network topologies.
 ## Serving contract
 
 - Model revision: `8627752b10b78c2b0f2fc69790a94ec9f1ddaa26`
-- Four hosts, one GB10 GPU process per host, tensor parallel size 4
-- 524,288 maximum context
+- Four hosts, tensor parallel size 4
+- 524,288 configured maximum context
+  - The model architecture supports up to 1M tokens, but this profile has not
+    qualified that boundary.
 - 8,192 batched tokens and 32 sequences
 - FP8 KV cache with an explicit 8 GiB slab per rank
+  - There may be room to tune this after controlled memory and concurrency
+    testing.
 - InstantTensor rank-local loading
 - FlashKDA prefill
 - FlashInfer CUTLASS NVFP4 target experts
@@ -38,22 +42,28 @@ vLLM recipe for arbitrary hosts or network topologies.
 MTP4 produces five target-query rows per live sequence: one target token plus
 four draft tokens. The capture ladder therefore scales through `32 × 5 = 160`.
 
-## What must be published
+## Image
 
-The working image is currently a local ARM64 image named
-`sparkring-glm53-official-spark:mtp-mapped-v14`. Before another operator can
-use this repository, publish that exact image to an OCI registry:
+The private ARM64 image is published at:
 
-```bash
-export DEST_IMAGE=ghcr.io/OWNER/glm53-flash-sparkring:v14-arm64
-docker login ghcr.io
-SOURCE_IMAGE=sparkring-glm53-official-spark:mtp-mapped-v14 \
-  DEST_IMAGE="$DEST_IMAGE" \
-  bash scripts/publish-image.sh
+```text
+ghcr.io/fujitsupolycom/glm53-flash-sparkring:v14-arm64
 ```
 
-The image is ARM64/SM121-specific. Do not advertise it as an AMD64 or generic
-Blackwell image. The repository does not redistribute model weights.
+Deployments pin its immutable digest:
+
+```text
+ghcr.io/fujitsupolycom/glm53-flash-sparkring@sha256:8ca89ea984ac8d1bcaed2a0d60141cd0d85abd4d9ad40d98de1c8458d215d524
+```
+
+Authenticate before pulling:
+
+```bash
+gh auth token | docker login ghcr.io -u FujitsuPolycom --password-stdin
+```
+
+The image is ARM64/SM121-specific. The repository does not redistribute model
+weights.
 
 ## Prerequisites
 
@@ -61,8 +71,9 @@ Each Spark needs:
 
 - NVIDIA DGX Spark software with a driver compatible with CUDA 13
 - Docker with NVIDIA Container Toolkit
-- two cycle-facing ConnectX/RoCE devices
-- the same RoCEv2 GID index on both cycle-facing devices
+- two cycle-facing ConnectX/RoCE interfaces
+- one 200 Gb/s DAC per ring edge, four DACs total for a four-Spark cycle
+- the same RoCEv2 GID index on both cycle-facing interfaces
 - enough local storage for the approximately 184 GiB NVFP4 checkpoint
 - passwordless SSH from the controller for deployment orchestration
 
@@ -140,21 +151,7 @@ The verifier requires:
 - no CUDA, NCCL, or vLLM error lines after startup
 - four-token drafting (`draft_tokens / drafts == 4` once requests have run)
 
-Then send a real request and rerun the verifier.
-
-## Rollback
-
-Keep the MTP3 launcher or prior image tag available until MTP4 has a complete
-benchmark and soak receipt. To stop this profile without touching model files:
-
-```bash
-CONFIRM_REPLACE_GLM53=1 \
-  ACTION=stop \
-  bash scripts/deploy-cluster.sh config/service.env config/nodes.tsv
-```
-
-The model checkpoint, EXL3 checkpoints, image cache, and JIT caches are never
-deleted by these scripts.
+Send a real request and rerun the verifier.
 
 ## Known limitations
 
@@ -162,8 +159,7 @@ deleted by these scripts.
   been compared against MTP3 under a matched matrix.
 - Eight GiB of hybrid KV does not admit 32 independent 8K requests; C16 is the
   currently demonstrated high-concurrency region.
-- Unified-memory `MemAvailable` is not a safe KV allocation signal. The launch
-  uses an explicit byte count instead of trusting `gpu-memory-utilization`.
 - This profile uses patched NCCL on a four-node cycle. Switch fabrics and
   two-node direct pairs require different transport settings.
+- This setup has only been lightly validated on switchless four-Spark clusters.
 
