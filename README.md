@@ -21,20 +21,16 @@ vLLM recipe for arbitrary hosts or network topologies.
 ## Serving contract
 
 - Model revision: `8627752b10b78c2b0f2fc69790a94ec9f1ddaa26`
-- Four hosts, tensor parallel size 4
-- 524,288 configured maximum context
-  - The model architecture supports up to 1M tokens, but this profile has not
-    qualified that boundary.
+- Four hosts tensor parallel size 4
+- 524,288 maximum context (supports 1M)
 - 8,192 batched tokens and 32 sequences
-- FP8 KV cache with an explicit 8 GiB slab per rank
-  - There may be room to tune this after controlled memory and concurrency
-    testing.
+- FP8 KV cache with an explicit 8 GiB slab per rank (maybe some room to tweak here)
 - InstantTensor rank-local loading
 - FlashKDA prefill
 - FlashInfer CUTLASS NVFP4 target experts
 - Marlin MXFP8 MTP experts
 - Probabilistic MTP4 with standard rejection sampling
-- `FULL_AND_PIECEWISE` CUDA graphs
+- FULL_AND_PIECEWISE CUDA graphs
 - Capture rows `5,10,20,40,80,160`
 - Async scheduling and prefix caching
 - SparkRing-patched NCCL 2.30.7 over native RoCE
@@ -44,13 +40,13 @@ four draft tokens. The capture ladder therefore scales through `32 × 5 = 160`.
 
 ## Image
 
-The private ARM64 image is published at:
+The private ARM64/SM121 image is published at:
 
 ```text
 ghcr.io/fujitsupolycom/glm53-flash-sparkring:v14-arm64
 ```
 
-Deployments pin its immutable digest:
+Deployments use the immutable digest:
 
 ```text
 ghcr.io/fujitsupolycom/glm53-flash-sparkring@sha256:8ca89ea984ac8d1bcaed2a0d60141cd0d85abd4d9ad40d98de1c8458d215d524
@@ -62,18 +58,14 @@ Authenticate before pulling:
 gh auth token | docker login ghcr.io -u FujitsuPolycom --password-stdin
 ```
 
-The image is ARM64/SM121-specific. The repository does not redistribute model
-weights.
+The repository does not redistribute model weights.
 
 ## Prerequisites
 
 Each Spark needs:
 
-- NVIDIA DGX Spark software with a driver compatible with CUDA 13
-- Docker with NVIDIA Container Toolkit
-- two cycle-facing ConnectX/RoCE interfaces
-- one 200 Gb/s DAC per ring edge, four DACs total for a four-Spark cycle
-- the same RoCEv2 GID index on both cycle-facing interfaces
+- two cycle-facing ConnectX/RoCE devices - only one 200Gb DAC required
+- the same RoCEv2 GID index on both cycle-facing devices
 - enough local storage for the approximately 184 GiB NVFP4 checkpoint
 - passwordless SSH from the controller for deployment orchestration
 
@@ -151,7 +143,7 @@ The verifier requires:
 - no CUDA, NCCL, or vLLM error lines after startup
 - four-token drafting (`draft_tokens / drafts == 4` once requests have run)
 
-Send a real request and rerun the verifier.
+Then send a real request and rerun the verifier.
 
 ## Known limitations
 
@@ -160,6 +152,6 @@ Send a real request and rerun the verifier.
 - Eight GiB of hybrid KV does not admit 32 independent 8K requests; C16 is the
   currently demonstrated high-concurrency region.
 - This profile uses patched NCCL on a four-node cycle. Switch fabrics and
-  two-node direct pairs require different transport settings.
-- This setup has only been lightly validated on switchless four-Spark clusters.
+  two-node direct pairs require different transport settings
+- this setup has only been run and validated (lightly) on *switchless* 4x spark clusters.
 
