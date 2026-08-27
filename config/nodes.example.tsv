@@ -1,0 +1,6 @@
+# rank	ssh_target	host_ip	hcas
+0	user@RANK0_IP	RANK0_RENDEZVOUS_IP	roce_device_to_rank3,roce_device_to_rank1
+1	user@RANK1_IP	RANK1_RENDEZVOUS_IP	roce_device_to_rank0,roce_device_to_rank2
+2	user@RANK2_IP	RANK2_RENDEZVOUS_IP	roce_device_to_rank1,roce_device_to_rank3
+3	user@RANK3_IP	RANK3_RENDEZVOUS_IP	roce_device_to_rank2,roce_device_to_rank0
+
