@@ -1,5 +1,7 @@
 # GLM-5.3-Flash NVFP4 on four DGX Sparks
 
+ > Repo outdated - newer, better quants exist
+
 This repository serves
 [`local-inference-lab/GLM-5.3-Flash-NVFP4`](https://huggingface.co/local-inference-lab/GLM-5.3-Flash-NVFP4)
 with vLLM across four NVIDIA DGX Sparks connected as a 200 Gb/s RoCE cycle.
